@@ -16,9 +16,10 @@ func main() {
 	// 机器人的名字
 	robotName := "chat_gpt"
 	// 机器人 token
-	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzgxOTEzNzgsInVpZCI6IjUwMDAwMCIsImRldmljZSI6IjEiLCJ2ZXIiOjE2NzgxMDQ5Nzh9.N34afwD8BJpOdqDa70_asZKn2TirqM9nIe-qhlEik9o"
-
+	token := ""
 	chat_gpt.ApiToken("")
+	// 设置代理
+	chat_gpt.SetProxy("http://127.0.0.1:7890")
 	// 使用这个服务器, 在这 http://im.dengzii.com/#/im/session/the_world_channel 可以看到机器人
 	botX := robotic.NewBotX("ws://intercom.ink/ws", token)
 

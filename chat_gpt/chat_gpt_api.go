@@ -6,12 +6,24 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 var _token = ""
+var _client = &http.Client{}
 
 func ApiToken(token string) {
 	_token = token
+}
+
+func SetProxy(httpProxy string) {
+	url_, err := url.Parse(httpProxy)
+	if err != nil {
+		panic(err)
+	}
+	_client.Transport = &http.Transport{
+		Proxy: http.ProxyURL(url_),
+	}
 }
 
 func requestChatGPT(msg string) ([]byte, error) {
@@ -32,7 +44,7 @@ func requestChatGPT(msg string) ([]byte, error) {
 	request.Header.Add("Authorization", "Bearer "+_token)
 	request.Header.Add("Content-Type", "application/json")
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := _client.Do(request)
 	if err != nil {
 		return nil, err
 	}
