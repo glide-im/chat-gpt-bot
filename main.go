@@ -1,81 +1,52 @@
 package main
 
 import (
-	"fmt"
 	"github.com/glide-im/chat-gpt-bot/chat_gpt"
-	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/robotic"
-	"github.com/google/uuid"
-	"strings"
-	"time"
+	"github.com/spf13/viper"
 )
+
+type Config struct {
+	BotName      string
+	BotToken     string
+	OpenAiApiKey string
+	Proxy        string
+	BotServer    string
+}
+
+func init() {
+
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(".")
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	config = &Config{}
+	err = viper.Unmarshal(config)
+	if err != nil {
+		panic(err)
+	}
+}
+
+var config *Config
+
+var botX *robotic.BotX
 
 func main() {
 
-	// 机器人的名字
-	robotName := "chat_gpt"
-	// 机器人 token
-	token := ""
-	chat_gpt.ApiToken("")
-	// 设置代理
-	chat_gpt.SetProxy("http://127.0.0.1:7890")
-	// 使用这个服务器, 在这 http://im.dengzii.com/#/im/session/the_world_channel 可以看到机器人
-	botX := robotic.NewBotX("ws://intercom.ink/ws", token)
+	chat_gpt.ApiToken(config.OpenAiApiKey)
+	if config.Proxy != "" {
+		chat_gpt.SetProxy(config.Proxy)
+	}
+	botX = robotic.NewBotX(config.BotServer, config.BotToken)
 
 	// 处理聊天消息
-	botX.HandleChatMessage(func(m *messages.GlideMessage, cm *messages.ChatMessage) {
-		logger.I("handler chat message >> %s", m.GetAction())
-		if m.GetAction() == robotic.ActionChatMessage {
-			go func() {
-				reply, err := chat_gpt.Chat(cm.Content)
-				if err != nil {
-					reply = "机器人出错啦"
-					logger.ErrE("robot error", err)
-				}
-				replyMsg := messages.ChatMessage{
-					CliMid:  uuid.New().String(),
-					Mid:     0,
-					From:    botX.Id,
-					To:      cm.From,
-					Type:    cm.Type,
-					Content: reply,
-					SendAt:  time.Now().Unix(),
-				}
-				err2 := botX.Send(cm.From, robotic.ActionChatMessage, &replyMsg)
-				if err2 != nil {
-					logger.ErrE("send error", err2)
-				}
-			}()
-		}
-		if m.GetAction() == robotic.ActionGroupMessage {
-			logger.I("Receive Group Message: %s", m.To)
-			if strings.HasPrefix(cm.Content, "@"+robotName) {
-
-				go func() {
-					reply, err := chat_gpt.Chat(cm.Content)
-					if err != nil {
-						reply = "机器人出错啦"
-						logger.ErrE("robot error", err)
-					}
-
-					replyMsg := messages.ChatMessage{
-						CliMid:  uuid.New().String(),
-						From:    botX.Id,
-						To:      cm.To,
-						Type:    cm.Type,
-						Content: fmt.Sprintf("@%s %s", cm.From, reply),
-						SendAt:  time.Now().Unix(),
-					}
-					err2 := botX.Send(m.To, robotic.ActionGroupMessage, &replyMsg)
-					if err2 != nil {
-						logger.ErrE("send error", err2)
-					}
-
-				}()
-			}
-		}
-	})
+	botX.HandleChatMessage(MessageHandler)
 
 	// 启动
 	err := botX.Start(func(m *messages.GlideMessage) {
