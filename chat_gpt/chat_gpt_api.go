@@ -74,6 +74,24 @@ func textCompletion(param *ChatGPTRequest) ([]byte, error) {
 	return nil, errors.New(response.Status)
 }
 
+func ImageGen(prompt string) (string, error) {
+	ctx := context.Background()
+
+	// Sample image by link
+	reqUrl := openai.ImageRequest{
+		Prompt:         prompt,
+		Size:           openai.CreateImageSize512x512,
+		ResponseFormat: openai.CreateImageResponseFormatURL,
+		N:              1,
+	}
+
+	respUrl, err := _openAi.CreateImage(ctx, reqUrl)
+	if err != nil {
+		return "", err
+	}
+	return respUrl.Data[0].URL, nil
+}
+
 func TextCompletion(msg string, userId string) (string, error) {
 
 	m := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: msg}

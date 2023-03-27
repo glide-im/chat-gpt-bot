@@ -9,10 +9,12 @@ import (
 
 type Config struct {
 	BotName      string
+	Greetings    string
 	BotToken     string
 	OpenAiApiKey string
 	Proxy        string
 	BotServer    string
+	Type         int32
 }
 
 func init() {

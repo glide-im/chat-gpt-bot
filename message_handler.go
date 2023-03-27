@@ -11,17 +11,22 @@ import (
 	"time"
 )
 
-const greetings = `
-您好，我是 ChatGPT Bot，是一个由 OpenAI GPT-3.5 开发的智能对话机器人。我可以回答各种问题，例如科学、技术、历史、文化等方面的问题, 也可以模拟面试, 文字互动游戏等。
-`
-
 func MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
 
 	logger.I("handler chat message >> %s", m.GetAction())
 
+	if cm.From == "100000" || cm.From == "543852" {
+		return
+	}
 	if m.GetAction() == robotic.ActionChatMessage {
 		go func() {
-			reply, err := chat_gpt.TextCompletion(cm.Content, cm.From)
+			var reply string
+			var err error
+			if config.Type == 2 {
+				reply, err = chat_gpt.ImageGen(cm.Content)
+			} else if config.Type == 1 {
+				reply, err = chat_gpt.TextCompletion(cm.Content, cm.From)
+			}
 			if err != nil {
 				reply = "机器人出错啦"
 				logger.ErrE("robot error", err)
@@ -31,7 +36,7 @@ func MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
 				Mid:     0,
 				From:    botX.Id,
 				To:      cm.From,
-				Type:    cm.Type,
+				Type:    11,
 				Content: reply,
 				SendAt:  time.Now().Unix(),
 			}
@@ -84,7 +89,7 @@ func greetingTo(uid string) {
 		From:    botX.Id,
 		To:      uid,
 		Type:    1,
-		Content: greetings,
+		Content: config.Greetings,
 		SendAt:  time.Now().Unix(),
 	}
 
