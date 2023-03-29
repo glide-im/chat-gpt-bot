@@ -11,7 +11,11 @@ import (
 	"time"
 )
 
-func MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
+type MsgHandler struct {
+	bot *Bot
+}
+
+func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
 
 	logger.I("handler chat message >> %s", m.GetAction())
 
@@ -22,9 +26,9 @@ func MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
 		go func() {
 			var reply string
 			var err error
-			if config.Type == 2 {
+			if h.bot.Type == 2 {
 				reply, err = chat_gpt.ImageGen(cm.Content)
-			} else if config.Type == 1 {
+			} else if h.bot.Type == 1 {
 				reply, err = chat_gpt.TextCompletion(cm.Content, cm.From)
 			}
 			if err != nil {
@@ -47,16 +51,16 @@ func MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
 		}()
 	}
 	if m.GetAction() == robotic.ActionGroupMessage {
-		handleGroupMessage(m.To, cm)
+		h.handleGroupMessage(m.To, cm)
 	}
 }
 
-func handleGroupMessage(gid string, cm *messages.ChatMessage) {
+func (h *MsgHandler) handleGroupMessage(gid string, cm *messages.ChatMessage) {
 	if cm.Type == 100 && cm.Content != botX.Id {
-		go greetingTo(cm.Content)
+		go h.greetingTo(cm.Content)
 	}
 	logger.I("Receive Group Message: %s", gid)
-	if strings.HasPrefix(cm.Content, "@"+config.BotName) {
+	if strings.HasPrefix(cm.Content, "@openai ") {
 
 		go func() {
 			reply, err := chat_gpt.TextCompletion(cm.Content, cm.From)
@@ -65,11 +69,15 @@ func handleGroupMessage(gid string, cm *messages.ChatMessage) {
 				logger.ErrE("robot error", err)
 			}
 
+			msgType := 1
+			if h.bot.Type == 2 {
+				msgType = 11
+			}
 			replyMsg := messages.ChatMessage{
 				CliMid:  uuid.New().String(),
 				From:    botX.Id,
 				To:      cm.To,
-				Type:    cm.Type,
+				Type:    int32(msgType),
 				Content: fmt.Sprintf("@%s %s", cm.From, reply),
 				SendAt:  time.Now().Unix(),
 			}
@@ -82,14 +90,14 @@ func handleGroupMessage(gid string, cm *messages.ChatMessage) {
 	}
 }
 
-func greetingTo(uid string) {
+func (h *MsgHandler) greetingTo(uid string) {
 
 	greeting := messages.ChatMessage{
 		CliMid:  uuid.New().String(),
 		From:    botX.Id,
 		To:      uid,
-		Type:    1,
-		Content: config.Greetings,
+		Type:    11,
+		Content: h.bot.Greetings,
 		SendAt:  time.Now().Unix(),
 	}
 

@@ -7,14 +7,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Config struct {
-	BotName      string
-	Greetings    string
-	BotToken     string
+type Bot struct {
+	Greetings string
+	BotToken  string
+	Type      int32
+}
+
+type Common struct {
 	OpenAiApiKey string
 	Proxy        string
 	BotServer    string
-	Type         int32
+}
+
+type Config struct {
+	Bot1   *Bot
+	Bot2   *Bot
+	Common *Common
 }
 
 func init() {
@@ -40,15 +48,20 @@ var config *Config
 var botX *robotic.BotX
 
 func main() {
-
-	chat_gpt.ApiToken(config.OpenAiApiKey)
-	if config.Proxy != "" {
-		chat_gpt.SetProxy(config.Proxy)
+	chat_gpt.ApiToken(config.Common.OpenAiApiKey)
+	if config.Common.Proxy != "" {
+		chat_gpt.SetProxy(config.Common.Proxy)
 	}
-	botX = robotic.NewBotX(config.BotServer, config.BotToken)
+	//go startBot(config.Bot2)
+	startBot(config.Bot1)
+}
 
+func startBot(bot *Bot) {
+
+	botX = robotic.NewBotX(config.Common.BotServer, bot.BotToken)
 	// 处理聊天消息
-	botX.HandleChatMessage(MessageHandler)
+	h := &MsgHandler{bot: bot}
+	botX.HandleChatMessage(h.MessageHandler)
 
 	// 启动
 	err := botX.Start(func(m *messages.GlideMessage) {

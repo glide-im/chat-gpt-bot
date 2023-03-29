@@ -19,7 +19,8 @@ var _openAi *openai.Client
 var _cache *lru.Cache[string, *MessageList]
 
 type MessageList struct {
-	m []openai.ChatCompletionMessage
+	total int
+	m     []openai.ChatCompletionMessage
 }
 
 func init() {
@@ -99,10 +100,10 @@ func TextCompletion(msg string, userId string) (string, error) {
 	logger.D("load %d history for user %s", len(history), userId)
 	history = append(history, m)
 	request := openai.ChatCompletionRequest{
-		Model:            openai.GPT3Dot5Turbo,
+		Model:            openai.GPT3Dot5Turbo0301,
 		Messages:         history,
-		MaxTokens:        500,
-		Temperature:      0.7,
+		MaxTokens:        2000,
+		Temperature:      1.0,
 		TopP:             0.5,
 		N:                1,
 		Stream:           false,
@@ -126,15 +127,25 @@ func TextCompletion(msg string, userId string) (string, error) {
 
 func updateChatHistory(id string, user openai.ChatCompletionMessage, bot openai.ChatCompletionMessage) {
 
-	value, ok := _cache.Get(id)
+	history, ok := _cache.Get(id)
 	if !ok {
-		_cache.Add(id, &MessageList{m: []openai.ChatCompletionMessage{
-			user,
-			bot,
-		}})
-	} else {
-		value.m = append(value.m, user)
-		value.m = append(value.m, bot)
+		history = &MessageList{m: []openai.ChatCompletionMessage{}}
+		_cache.Add(id, history)
+	}
+	i := len(user.Content)
+	i2 := len(bot.Content)
+
+	history.total += i + i2
+
+	history.m = append(history.m, user)
+	history.m = append(history.m, bot)
+
+	if history.total > 4086 {
+		// 移除前面的
+		for history.total > 4086 {
+			history.total -= len(history.m[0].Content)
+			history.m = history.m[1:]
+		}
 	}
 }
 
