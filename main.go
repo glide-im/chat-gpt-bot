@@ -45,22 +45,22 @@ func init() {
 
 var config *Config
 
-var botX *robotic.BotX
-
 func main() {
 	chat_gpt.ApiToken(config.Common.OpenAiApiKey)
 	if config.Common.Proxy != "" {
 		chat_gpt.SetProxy(config.Common.Proxy)
 	}
-	//go startBot(config.Bot2)
+	go startBot(config.Bot2)
 	startBot(config.Bot1)
 }
 
 func startBot(bot *Bot) {
 
+	var botX *robotic.BotX
+
 	botX = robotic.NewBotX(config.Common.BotServer, bot.BotToken)
 	// 处理聊天消息
-	h := &MsgHandler{bot: bot}
+	h := &MsgHandler{bot: botX, config: bot}
 	botX.HandleChatMessage(h.MessageHandler)
 
 	// 启动
