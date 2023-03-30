@@ -140,9 +140,9 @@ func updateChatHistory(id string, user openai.ChatCompletionMessage, bot openai.
 	history.m = append(history.m, user)
 	history.m = append(history.m, bot)
 
-	if history.total > 4086 {
+	if history.total > 4000 {
 		// 移除前面的
-		for history.total > 4086 {
+		for history.total > 4000 {
 			history.total -= len(history.m[0].Content)
 			history.m = history.m[1:]
 		}

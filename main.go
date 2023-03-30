@@ -51,10 +51,21 @@ func main() {
 		chat_gpt.SetProxy(config.Common.Proxy)
 	}
 	go startBot(config.Bot2)
-	startBot(config.Bot1)
+	go startBot(config.Bot1)
+
+	// 保持进程
+	select {}
 }
 
 func startBot(bot *Bot) {
+
+	func() {
+		err := recover()
+		if err != nil {
+			println(err.(error).Error())
+			go startBot(bot)
+		}
+	}()
 
 	var botX *robotic.BotX
 

@@ -27,21 +27,32 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 		go func() {
 			var reply string
 			var err error
+			var replyType int32 = 11
 			if h.config.Type == 2 {
+				replyType = 2
 				reply, err = chat_gpt.ImageGen(cm.Content)
+				if err != nil {
+					logger.ErrE("robot error", err)
+					if strings.Contains(err.Error(), "status code: 400") {
+						reply = "**请不要试图生成包含非法的内容的图片**"
+					} else {
+						reply = "机器人出错啦"
+					}
+					replyType = 11
+				}
 			} else if h.config.Type == 1 {
 				reply, err = chat_gpt.TextCompletion(cm.Content, cm.From)
-			}
-			if err != nil {
-				reply = "机器人出错啦"
-				logger.ErrE("robot error", err)
+				if err != nil {
+					reply = "机器人出错啦"
+					logger.ErrE("robot error", err)
+				}
 			}
 			replyMsg := messages.ChatMessage{
 				CliMid:  uuid.New().String(),
 				Mid:     0,
 				From:    h.bot.Id,
 				To:      cm.From,
-				Type:    11,
+				Type:    replyType,
 				Content: reply,
 				SendAt:  time.Now().Unix(),
 			}
