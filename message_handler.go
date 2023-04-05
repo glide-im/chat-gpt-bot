@@ -25,6 +25,11 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 	}
 	if m.GetAction() == robotic.ActionChatMessage {
 		go func() {
+			if cm.Type == 100 {
+				h.handleStream(cm)
+				return
+			}
+
 			var reply string
 			var err error
 			var replyType int32 = 11
