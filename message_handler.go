@@ -25,6 +25,16 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 	}
 	if m.GetAction() == robotic.ActionChatMessage {
 		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					err2, ok := err.(error)
+					if ok {
+						logger.ErrE("robot error", err2)
+					} else {
+						logger.ErrE("robot error", fmt.Errorf("%v", err))
+					}
+				}
+			}()
 
 			var reply string
 			var err error
