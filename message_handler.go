@@ -25,10 +25,6 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 	}
 	if m.GetAction() == robotic.ActionChatMessage {
 		go func() {
-			if cm.Type == 100 {
-				h.handleStream(cm)
-				return
-			}
 
 			var reply string
 			var err error
@@ -46,11 +42,8 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 					replyType = 11
 				}
 			} else if h.config.Type == 1 {
-				reply, err = chat_gpt.TextCompletion(cm.Content, cm.From)
-				if err != nil {
-					reply = "机器人出错啦"
-					logger.ErrE("robot error", err)
-				}
+				h.handleStream(cm)
+				return
 			}
 			replyMsg := messages.ChatMessage{
 				CliMid:  uuid.New().String(),
@@ -113,6 +106,7 @@ func (h *MsgHandler) greetingTo(uid string) {
 		CliMid:  uuid.New().String(),
 		From:    h.bot.Id,
 		To:      uid,
+		Mid:     time.Now().Unix(),
 		Type:    11,
 		Content: h.config.Greetings,
 		SendAt:  time.Now().Unix(),

@@ -1,39 +1,58 @@
 package main
 
 import (
+	"github.com/glide-im/chat-gpt-bot/chat_gpt"
+	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/robotic"
 	"github.com/google/uuid"
-	"strconv"
 	"time"
 )
 
-type CliCustom struct {
-	Type    int    `json:"type,omitempty"`
-	Content string `json:"content,omitempty"`
-	Id      string `json:"id,omitempty"`
-	From    string `json:"from,omitempty"`
-}
-
 const (
-	Steam         = 100
-	SteamFinish   = 101
-	SteamCanceled = 102
+	Steam          = 1000
+	StreamMarkdown = 1011
+	SteamFinish    = 1001
+	SteamCanceled  = 1002
 )
 
 func (h *MsgHandler) handleStream(cm *messages.ChatMessage) {
 
 	go func() {
+
 		newUUID, _ := uuid.NewUUID()
-		id := newUUID.String()
-		for i := 0; i < 20; i++ {
-			_ = h.bot.Send(cm.From, robotic.ActionClientCustom, CliCustom{
-				Type:    Steam,
-				Id:      id,
-				Content: strconv.Itoa(i),
-				From:    cm.To,
-			})
-			time.Sleep(time.Millisecond * 300)
+		id := newUUID.ID()
+		seq := 0
+		m := messages.ChatMessage{
+			Type:    Steam,
+			Mid:     int64(id),
+			CliMid:  newUUID.String(),
+			Content: "",
+			From:    cm.To,
+			To:      cm.From,
+			SendAt:  time.Now().Unix(),
+			Seq:     int64(seq),
 		}
+
+		ch, err := chat_gpt.TextCompletionSteam(cm.Content, cm.From)
+		if err != nil || ch == nil {
+			m.Type = 11
+			m.Content = "机器人出错啦"
+			_ = h.bot.Send(cm.From, robotic.ActionChatMessage, &m)
+			logger.ErrE("robot error", err)
+			return
+		}
+		for s := range ch {
+			if s != "" {
+				m.Content = s
+				m.Seq = int64(seq)
+				seq++
+				_ = h.bot.Send(cm.From, robotic.ActionClientCustom, &m)
+				time.Sleep(time.Millisecond * 30)
+			}
+		}
+		m.Content = "."
+		m.Type = SteamFinish
+		_ = h.bot.Send(cm.From, robotic.ActionClientCustom, &m)
 	}()
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sashabaranov/go-openai"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -123,6 +124,64 @@ func TextCompletion(msg string, userId string) (string, error) {
 	updateChatHistory(userId, m, choice.Message)
 
 	return content, nil
+}
+
+func TextCompletionSteam(msg string, userId string) (<-chan string, error) {
+
+	m := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: msg}
+	history := loadHistory(userId)
+	logger.D("load %d history for user %s", len(history), userId)
+	history = append(history, m)
+	request := openai.ChatCompletionRequest{
+		Model:            openai.GPT3Dot5Turbo0301,
+		Messages:         history,
+		MaxTokens:        2000,
+		Temperature:      1.0,
+		TopP:             0.5,
+		N:                1,
+		Stream:           true,
+		Stop:             nil,
+		PresencePenalty:  0.1,
+		FrequencyPenalty: 0.1,
+		LogitBias:        nil,
+		User:             userId,
+	}
+	response, err := _openAi.CreateChatCompletionStream(context.Background(), request)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan string)
+	go func() {
+		defer func() {
+			err := recover()
+			if err != nil {
+				logger.E("error in stream %v", err)
+			}
+		}()
+		all := ""
+		for {
+			recv, err2 := response.Recv()
+			logger.D("recv %v", recv.ID)
+			if err2 != nil {
+				if err2 != io.EOF {
+					logger.E("error in stream %v", err2)
+				}
+				response.Close()
+				close(ch)
+				updateChatHistory(userId, m, openai.ChatCompletionMessage{
+					Role:    "assistant",
+					Content: all,
+				})
+				return
+			}
+			content := recv.Choices[0].Delta.Content
+			ch <- content
+			all += content
+		}
+	}()
+
+	return ch, nil
 }
 
 func updateChatHistory(id string, user openai.ChatCompletionMessage, bot openai.ChatCompletionMessage) {
