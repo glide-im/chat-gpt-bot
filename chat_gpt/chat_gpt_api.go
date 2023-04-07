@@ -20,8 +20,8 @@ var _openAi *openai.Client
 var _cache *lru.Cache[string, *MessageList]
 
 type MessageList struct {
-	total int
-	m     []openai.ChatCompletionMessage
+	totalToken int
+	messages   []openai.ChatCompletionMessage
 }
 
 func init() {
@@ -184,27 +184,22 @@ func TextCompletionSteam(msg string, userId string) (<-chan string, error) {
 	return ch, nil
 }
 
-func updateChatHistory(id string, user openai.ChatCompletionMessage, bot openai.ChatCompletionMessage) {
+func updateChatHistory(userId string, user openai.ChatCompletionMessage, bot openai.ChatCompletionMessage) {
 
-	history, ok := _cache.Get(id)
-	if !ok {
-		history = &MessageList{m: []openai.ChatCompletionMessage{}}
-		_cache.Add(id, history)
+	history, hasHistory := _cache.Get(userId)
+	if !hasHistory {
+		history = &MessageList{messages: []openai.ChatCompletionMessage{}}
+		_cache.Add(userId, history)
 	}
-	i := len(user.Content)
-	i2 := len(bot.Content)
 
-	history.total += i + i2
+	history.totalToken += len(user.Content) + len(bot.Content)
 
-	history.m = append(history.m, user)
-	history.m = append(history.m, bot)
+	history.messages = append(history.messages, user)
+	history.messages = append(history.messages, bot)
 
-	if history.total > 4000 {
-		// 移除前面的
-		for history.total > 4000 {
-			history.total -= len(history.m[0].Content)
-			history.m = history.m[1:]
-		}
+	for history.totalToken > 4000 {
+		history.totalToken -= len(history.messages[0].Content)
+		history.messages = history.messages[1:]
 	}
 }
 
@@ -212,8 +207,8 @@ func loadHistory(id string) []openai.ChatCompletionMessage {
 	value, ok := _cache.Get(id)
 	var result []openai.ChatCompletionMessage
 	if ok {
-		result = make([]openai.ChatCompletionMessage, len(value.m))
-		copy(result[:], value.m[:])
+		result = make([]openai.ChatCompletionMessage, len(value.messages))
+		copy(result[:], value.messages[:])
 	}
 	return result
 
