@@ -16,7 +16,7 @@ const (
 	SteamCanceled  = 1002
 )
 
-func (h *MsgHandler) handleStream(cm *messages.ChatMessage) {
+func (g *GptBot) handleStream(cm *messages.ChatMessage) {
 
 	go func() {
 
@@ -38,7 +38,7 @@ func (h *MsgHandler) handleStream(cm *messages.ChatMessage) {
 		if err != nil || ch == nil {
 			m.Type = 11
 			m.Content = "机器人出错啦"
-			_ = h.bot.Send(cm.From, robotic.ActionChatMessage, &m)
+			_ = g.BotX.Send(cm.From, robotic.ActionChatMessage, &m)
 			logger.ErrE("robot error", err)
 			return
 		}
@@ -47,12 +47,12 @@ func (h *MsgHandler) handleStream(cm *messages.ChatMessage) {
 				m.Content = s
 				m.Seq = int64(seq)
 				seq++
-				_ = h.bot.Send(cm.From, robotic.ActionClientCustom, &m)
+				_ = g.BotX.Send(cm.From, robotic.ActionClientCustom, &m)
 				time.Sleep(time.Millisecond * 30)
 			}
 		}
 		m.Content = "."
 		m.Type = SteamFinish
-		_ = h.bot.Send(cm.From, robotic.ActionClientCustom, &m)
+		_ = g.BotX.Send(cm.From, robotic.ActionClientCustom, &m)
 	}()
 }

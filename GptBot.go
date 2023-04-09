@@ -11,12 +11,51 @@ import (
 	"time"
 )
 
-type MsgHandler struct {
-	config *Bot
-	bot    *robotic.BotX
+type GptBot struct {
+	Commands *commands
+	Config   *BotConfig
+	BotX     *robotic.BotX
+
+	server string
 }
 
-func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
+func New(c *BotConfig) *GptBot {
+
+	var botX *robotic.BotX
+
+	botX = robotic.NewBotX(config.Common.BotServer, c.BotToken)
+
+	return &GptBot{
+		Commands: &commands{bot: botX},
+		Config:   c,
+		BotX:     botX,
+		server:   config.Common.BotServer,
+	}
+}
+
+func (g *GptBot) Run() {
+
+	func() {
+		err := recover()
+		if err != nil {
+			println(err.(error).Error())
+			go g.Run()
+		}
+	}()
+
+	g.Commands.initCommand()
+
+	// 处理聊天消息
+	g.BotX.HandleChatMessage(g.MessageHandler)
+
+	// 启动
+	err := g.BotX.Start(func(m *messages.GlideMessage) {
+		// 处理所有消息
+	})
+	panic(err)
+}
+
+func (g *GptBot) MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessage) {
 
 	logger.I("handler chat message >> %s", m.GetAction())
 
@@ -39,7 +78,7 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 			var reply string
 			var err error
 			var replyType int32 = 11
-			if h.config.Type == 2 {
+			if g.Config.Type == 2 {
 				replyType = 2
 				reply, err = chat_gpt.ImageGen(cm.Content)
 				if err != nil {
@@ -51,33 +90,33 @@ func (h *MsgHandler) MessageHandler(m *messages.GlideMessage, cm *messages.ChatM
 					}
 					replyType = 11
 				}
-			} else if h.config.Type == 1 {
-				h.handleStream(cm)
+			} else if g.Config.Type == 1 {
+				g.handleStream(cm)
 				return
 			}
 			replyMsg := messages.ChatMessage{
 				CliMid:  uuid.New().String(),
 				Mid:     0,
-				From:    h.bot.Id,
+				From:    g.BotX.Id,
 				To:      cm.From,
 				Type:    replyType,
 				Content: reply,
 				SendAt:  time.Now().Unix(),
 			}
-			err2 := h.bot.Send(cm.From, robotic.ActionChatMessage, &replyMsg)
+			err2 := g.BotX.Send(cm.From, robotic.ActionChatMessage, &replyMsg)
 			if err2 != nil {
 				logger.ErrE("send error", err2)
 			}
 		}()
 	}
 	if m.GetAction() == robotic.ActionGroupMessage {
-		h.handleGroupMessage(m.To, cm)
+		g.handleGroupMessage(m.To, cm)
 	}
 }
 
-func (h *MsgHandler) handleGroupMessage(gid string, cm *messages.ChatMessage) {
-	if cm.Type == 100 && cm.Content != h.bot.Id {
-		go h.greetingTo(cm.Content)
+func (g *GptBot) handleGroupMessage(gid string, cm *messages.ChatMessage) {
+	if cm.Type == 100 && cm.Content != g.BotX.Id {
+		go g.greetingTo(cm.Content)
 	}
 	logger.I("Receive Group Message: %s", gid)
 	if strings.HasPrefix(cm.Content, "@openai ") {
@@ -90,18 +129,18 @@ func (h *MsgHandler) handleGroupMessage(gid string, cm *messages.ChatMessage) {
 			}
 
 			msgType := 1
-			if h.config.Type == 2 {
+			if g.Config.Type == 2 {
 				msgType = 11
 			}
 			replyMsg := messages.ChatMessage{
 				CliMid:  uuid.New().String(),
-				From:    h.bot.Id,
+				From:    g.BotX.Id,
 				To:      cm.To,
 				Type:    int32(msgType),
 				Content: fmt.Sprintf("@%s %s", cm.From, reply),
 				SendAt:  time.Now().Unix(),
 			}
-			err2 := h.bot.Send(gid, robotic.ActionGroupMessage, &replyMsg)
+			err2 := g.BotX.Send(gid, robotic.ActionGroupMessage, &replyMsg)
 			if err2 != nil {
 				logger.ErrE("send error", err2)
 			}
@@ -110,19 +149,19 @@ func (h *MsgHandler) handleGroupMessage(gid string, cm *messages.ChatMessage) {
 	}
 }
 
-func (h *MsgHandler) greetingTo(uid string) {
+func (g *GptBot) greetingTo(uid string) {
 
 	greeting := messages.ChatMessage{
 		CliMid:  uuid.New().String(),
-		From:    h.bot.Id,
+		From:    g.BotX.Id,
 		To:      uid,
 		Mid:     time.Now().Unix(),
 		Type:    11,
-		Content: h.config.Greetings,
+		Content: g.Config.Greetings,
 		SendAt:  time.Now().Unix(),
 	}
 
-	err := h.bot.Send(uid, robotic.ActionChatMessage, &greeting)
+	err := g.BotX.Send(uid, robotic.ActionChatMessage, &greeting)
 	if err != nil {
 		logger.E("%v", err)
 	}

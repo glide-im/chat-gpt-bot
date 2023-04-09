@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/glide-im/glide v1.4.7
-	github.com/glide-im/robotic v1.0.0
+	github.com/glide-im/robotic v1.1.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/sashabaranov/go-openai v1.5.7

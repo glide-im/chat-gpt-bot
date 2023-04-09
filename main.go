@@ -2,26 +2,26 @@ package main
 
 import (
 	"github.com/glide-im/chat-gpt-bot/chat_gpt"
-	"github.com/glide-im/glide/pkg/messages"
-	"github.com/glide-im/robotic"
 	"github.com/spf13/viper"
 )
 
-type Bot struct {
+type BotConfig struct {
 	Greetings string
 	BotToken  string
 	Type      int32
 }
 
 type Common struct {
-	OpenAiApiKey string
-	Proxy        string
-	BotServer    string
+	OpenAiApiKey  string
+	Proxy         string
+	BotServer     string
+	AdminPassword string
+	VipPassword   string
 }
 
 type Config struct {
-	Bot1   *Bot
-	Bot2   *Bot
+	Bot1   *BotConfig
+	Bot2   *BotConfig
 	Common *Common
 }
 
@@ -50,33 +50,9 @@ func main() {
 	if config.Common.Proxy != "" {
 		chat_gpt.SetProxy(config.Common.Proxy)
 	}
-	go startBot(config.Bot2)
-	go startBot(config.Bot1)
+	//go New(config.Bot2).Run()
+	go New(config.Bot1).Run()
 
 	// 保持进程
 	select {}
-}
-
-func startBot(bot *Bot) {
-
-	func() {
-		err := recover()
-		if err != nil {
-			println(err.(error).Error())
-			go startBot(bot)
-		}
-	}()
-
-	var botX *robotic.BotX
-
-	botX = robotic.NewBotX(config.Common.BotServer, bot.BotToken)
-	// 处理聊天消息
-	h := &MsgHandler{bot: botX, config: bot}
-	botX.HandleChatMessage(h.MessageHandler)
-
-	// 启动
-	err := botX.Start(func(m *messages.GlideMessage) {
-		// 处理所有消息
-	})
-	panic(err)
 }
