@@ -9,49 +9,64 @@ import (
 )
 
 const (
-	Steam          = 1000
 	StreamMarkdown = 1011
-	SteamFinish    = 1001
-	SteamCanceled  = 1002
+	StreamText     = 1001
+
+	StatusStart    = 1
+	StatusSending  = 2
+	StatusFinish   = 3
+	StatusCanceled = 4
 )
+
+type ChatMessage2 struct {
+	*messages.ChatMessage
+	Status int32 `json:"status,omitempty"`
+}
 
 func (g *GptBot) handleStream(cm *messages.ChatMessage) {
 
 	go func() {
 
-		newUUID, _ := uuid.NewUUID()
-		id := newUUID.ID()
-		seq := 0
-		m := messages.ChatMessage{
-			Type:    Steam,
-			Mid:     int64(id),
-			CliMid:  newUUID.String(),
-			Content: "",
-			From:    cm.To,
-			To:      cm.From,
-			SendAt:  time.Now().Unix(),
-			Seq:     int64(seq),
-		}
+		to := cm.From
+
+		id, _ := uuid.NewUUID()
+		sendAt := time.Now().UnixMilli()
+
+		g.sendStreamMessage(to, id, sendAt, StatusStart, 0, "")
+		time.Sleep(time.Second * 1)
 
 		ch, err := g.Gpt.TextCompletionSteam(cm.Content, cm.From)
 		if err != nil || ch == nil {
-			m.Type = 11
-			m.Content = "机器人出错啦"
-			_ = g.BotX.Send(cm.From, robotic.ActionChatMessage, &m)
+			g.sendStreamMessage(to, id, sendAt, StatusCanceled, 0, "机器人出错了")
 			logger.ErrE("robot error", err)
 			return
 		}
+
+		seq := 0
 		for s := range ch {
-			if s != "" {
-				m.Content = s
-				m.Seq = int64(seq)
-				seq++
-				_ = g.BotX.Send(cm.From, robotic.ActionClientCustom, &m)
-				time.Sleep(time.Millisecond * 30)
-			}
+			seq++
+			g.sendStreamMessage(to, id, sendAt, StatusSending, int64(seq), s)
 		}
-		m.Content = "."
-		m.Type = SteamFinish
-		_ = g.BotX.Send(cm.From, robotic.ActionClientCustom, &m)
+
+		time.Sleep(time.Second * 1)
+		g.sendStreamMessage(to, id, sendAt, StatusFinish, 0, "")
+
 	}()
+}
+
+func (g *GptBot) sendStreamMessage(to string, id uuid.UUID, sendAt int64, status int32, seq int64, content string) {
+	m := ChatMessage2{
+		Status: status,
+		ChatMessage: &messages.ChatMessage{
+			Type:    StreamMarkdown,
+			Mid:     int64(id.ID()),
+			CliMid:  id.String(),
+			Content: content,
+			From:    g.BotX.Id,
+			To:      to,
+			SendAt:  sendAt,
+			Seq:     seq,
+		},
+	}
+	_ = g.BotX.Send(to, robotic.ActionClientCustom, &m)
 }

@@ -178,7 +178,6 @@ func (c *ChatGPT) TextCompletionSteam(msg string, userId string) (<-chan string,
 		all := ""
 		for {
 			recv, err2 := response.Recv()
-			logger.D("recv %v", recv.ID)
 			if err2 != nil {
 				if err2 != io.EOF {
 					logger.E("error in stream %v", err2)

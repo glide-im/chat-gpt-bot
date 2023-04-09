@@ -78,42 +78,47 @@ func (g *GptBot) MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessa
 				}
 			}()
 
-			var reply string
-			var err error
-			var replyType int32 = 11
 			if g.Config.Type == 2 {
-				replyType = 2
-				reply, err = g.Gpt.ImageGen(cm.Content)
-				if err != nil {
-					logger.ErrE("robot error", err)
-					if strings.Contains(err.Error(), "status code: 400") {
-						reply = "**请不要试图生成包含非法的内容的图片**"
-					} else {
-						reply = "机器人出错啦"
-					}
-					replyType = 11
-				}
+				g.imageGen(cm)
 			} else if g.Config.Type == 1 {
 				g.handleStream(cm)
-				return
-			}
-			replyMsg := messages.ChatMessage{
-				CliMid:  uuid.New().String(),
-				Mid:     0,
-				From:    g.BotX.Id,
-				To:      cm.From,
-				Type:    replyType,
-				Content: reply,
-				SendAt:  time.Now().Unix(),
-			}
-			err2 := g.BotX.Send(cm.From, robotic.ActionChatMessage, &replyMsg)
-			if err2 != nil {
-				logger.ErrE("send error", err2)
 			}
 		}()
 	}
 	if m.GetAction() == robotic.ActionGroupMessage {
 		g.handleGroupMessage(m.To, cm)
+	}
+}
+
+func (g *GptBot) imageGen(cm *messages.ChatMessage) {
+
+	var reply = ""
+	var err error
+	var replyType int32 = 2
+
+	reply, err = g.Gpt.ImageGen(cm.Content)
+
+	if err != nil {
+		logger.ErrE("robot error", err)
+		if strings.Contains(err.Error(), "status code: 400") {
+			reply = "**请不要试图生成包含非法的内容的图片**"
+		} else {
+			reply = "机器人出错啦"
+		}
+		replyType = 11
+	}
+	replyMsg := messages.ChatMessage{
+		CliMid:  uuid.New().String(),
+		Mid:     0,
+		From:    g.BotX.Id,
+		To:      cm.From,
+		Type:    replyType,
+		Content: reply,
+		SendAt:  time.Now().Unix(),
+	}
+	err2 := g.BotX.Send(cm.From, robotic.ActionChatMessage, &replyMsg)
+	if err2 != nil {
+		logger.ErrE("send error", err2)
 	}
 }
 
