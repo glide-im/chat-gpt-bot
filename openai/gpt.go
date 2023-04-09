@@ -1,4 +1,4 @@
-package chat_gpt
+package openai
 
 import (
 	"bytes"
@@ -14,44 +14,60 @@ import (
 	"net/url"
 )
 
-var _token = ""
-var _client = &http.Client{}
-var _openAi *openai.Client
-var _cache *lru.Cache[string, *MessageList]
-
 type MessageList struct {
 	totalToken int
 	messages   []openai.ChatCompletionMessage
 }
 
-func init() {
-	var err error
-	_cache, err = lru.New[string, *MessageList](200)
+type ChatGPT struct {
+	token  string
+	proxy  string
+	client *http.Client
+	openAi *openai.Client
+	cache  *lru.Cache[string, *MessageList]
+}
+
+func New(token string, proxy string) *ChatGPT {
+
+	cache, err := lru.New[string, *MessageList](200)
 	if err != nil {
 		panic(err)
 	}
+
+	gpt := &ChatGPT{
+		token:  token,
+		proxy:  proxy,
+		client: &http.Client{},
+		openAi: openai.NewClient(token),
+		cache:  cache,
+	}
+
+	if proxy != "" {
+		gpt.SetProxy(proxy)
+	}
+
+	return gpt
 }
 
-func ApiToken(token string) {
-	_token = token
-
-	_openAi = openai.NewClient(_token)
+func (c *ChatGPT) ApiToken(token string) {
+	c.token = token
+	c.openAi = openai.NewClient(c.token)
 }
 
-func SetProxy(httpProxy string) {
+func (c *ChatGPT) SetProxy(httpProxy string) {
 	url_, err := url.Parse(httpProxy)
 	if err != nil {
 		panic(err)
 	}
-	_client.Transport = &http.Transport{
+	c.client.Transport = &http.Transport{
 		Proxy: http.ProxyURL(url_),
 	}
-	config := openai.DefaultConfig(_token)
-	config.HTTPClient = _client
-	_openAi = openai.NewClientWithConfig(config)
+	config := openai.DefaultConfig(c.token)
+	config.HTTPClient = c.client
+	c.openAi = openai.NewClientWithConfig(config)
 }
 
-func textCompletion(param *ChatGPTRequest) ([]byte, error) {
+func (c *ChatGPT) textCompletion(param *ChatGPTRequest) ([]byte, error) {
 
 	marshal, _ := json.Marshal(param)
 
@@ -62,10 +78,10 @@ func textCompletion(param *ChatGPTRequest) ([]byte, error) {
 		return nil, err2
 	}
 
-	request.Header.Add("Authorization", "Bearer "+_token)
+	request.Header.Add("Authorization", "Bearer "+c.token)
 	request.Header.Add("Content-Type", "application/json")
 
-	response, err := _client.Do(request)
+	response, err := c.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +92,7 @@ func textCompletion(param *ChatGPTRequest) ([]byte, error) {
 	return nil, errors.New(response.Status)
 }
 
-func ImageGen(prompt string) (string, error) {
+func (c *ChatGPT) ImageGen(prompt string) (string, error) {
 	ctx := context.Background()
 
 	// Sample image by link
@@ -87,17 +103,17 @@ func ImageGen(prompt string) (string, error) {
 		N:              1,
 	}
 
-	respUrl, err := _openAi.CreateImage(ctx, reqUrl)
+	respUrl, err := c.openAi.CreateImage(ctx, reqUrl)
 	if err != nil {
 		return "", err
 	}
 	return respUrl.Data[0].URL, nil
 }
 
-func TextCompletion(msg string, userId string) (string, error) {
+func (c *ChatGPT) TextCompletion(msg string, userId string) (string, error) {
 
 	m := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: msg}
-	history := loadHistory(userId)
+	history := c.loadHistory(userId)
 	logger.D("load %d history for user %s", len(history), userId)
 	history = append(history, m)
 	request := openai.ChatCompletionRequest{
@@ -114,22 +130,22 @@ func TextCompletion(msg string, userId string) (string, error) {
 		LogitBias:        nil,
 		User:             userId,
 	}
-	response, err := _openAi.CreateChatCompletion(context.Background(), request)
+	response, err := c.openAi.CreateChatCompletion(context.Background(), request)
 	if err != nil {
 		return "", err
 	}
 	choice := response.Choices[0]
 	content := choice.Message.Content
 
-	updateChatHistory(userId, m, choice.Message)
+	c.updateChatHistory(userId, m, choice.Message)
 
 	return content, nil
 }
 
-func TextCompletionSteam(msg string, userId string) (<-chan string, error) {
+func (c *ChatGPT) TextCompletionSteam(msg string, userId string) (<-chan string, error) {
 
 	m := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: msg}
-	history := loadHistory(userId)
+	history := c.loadHistory(userId)
 	logger.D("load %d history for user %s", len(history), userId)
 	history = append(history, m)
 	request := openai.ChatCompletionRequest{
@@ -146,7 +162,7 @@ func TextCompletionSteam(msg string, userId string) (<-chan string, error) {
 		LogitBias:        nil,
 		User:             userId,
 	}
-	response, err := _openAi.CreateChatCompletionStream(context.Background(), request)
+	response, err := c.openAi.CreateChatCompletionStream(context.Background(), request)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +185,7 @@ func TextCompletionSteam(msg string, userId string) (<-chan string, error) {
 				}
 				response.Close()
 				close(ch)
-				updateChatHistory(userId, m, openai.ChatCompletionMessage{
+				c.updateChatHistory(userId, m, openai.ChatCompletionMessage{
 					Role:    "assistant",
 					Content: all,
 				})
@@ -184,12 +200,12 @@ func TextCompletionSteam(msg string, userId string) (<-chan string, error) {
 	return ch, nil
 }
 
-func updateChatHistory(userId string, user openai.ChatCompletionMessage, bot openai.ChatCompletionMessage) {
+func (c *ChatGPT) updateChatHistory(userId string, user openai.ChatCompletionMessage, bot openai.ChatCompletionMessage) {
 
-	history, hasHistory := _cache.Get(userId)
+	history, hasHistory := c.cache.Get(userId)
 	if !hasHistory {
 		history = &MessageList{messages: []openai.ChatCompletionMessage{}}
-		_cache.Add(userId, history)
+		c.cache.Add(userId, history)
 	}
 
 	history.totalToken += len(user.Content) + len(bot.Content)
@@ -203,8 +219,8 @@ func updateChatHistory(userId string, user openai.ChatCompletionMessage, bot ope
 	}
 }
 
-func loadHistory(id string) []openai.ChatCompletionMessage {
-	value, ok := _cache.Get(id)
+func (c *ChatGPT) loadHistory(id string) []openai.ChatCompletionMessage {
+	value, ok := c.cache.Get(id)
 	var result []openai.ChatCompletionMessage
 	if ok {
 		result = make([]openai.ChatCompletionMessage, len(value.messages))

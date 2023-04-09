@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/glide-im/chat-gpt-bot/chat_gpt"
+	"github.com/glide-im/chat-gpt-bot/openai"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/robotic"
@@ -16,16 +16,19 @@ type GptBot struct {
 	Config   *BotConfig
 	BotX     *robotic.BotX
 
+	Gpt *openai.ChatGPT
+
 	server string
 }
 
-func New(c *BotConfig) *GptBot {
+func New(c *BotConfig, gpt *openai.ChatGPT) *GptBot {
 
 	var botX *robotic.BotX
 
 	botX = robotic.NewBotX(config.Common.BotServer, c.BotToken)
 
 	return &GptBot{
+		Gpt:      gpt,
 		Commands: &commands{bot: botX},
 		Config:   c,
 		BotX:     botX,
@@ -80,7 +83,7 @@ func (g *GptBot) MessageHandler(m *messages.GlideMessage, cm *messages.ChatMessa
 			var replyType int32 = 11
 			if g.Config.Type == 2 {
 				replyType = 2
-				reply, err = chat_gpt.ImageGen(cm.Content)
+				reply, err = g.Gpt.ImageGen(cm.Content)
 				if err != nil {
 					logger.ErrE("robot error", err)
 					if strings.Contains(err.Error(), "status code: 400") {
@@ -122,7 +125,7 @@ func (g *GptBot) handleGroupMessage(gid string, cm *messages.ChatMessage) {
 	if strings.HasPrefix(cm.Content, "@openai ") {
 
 		go func() {
-			reply, err := chat_gpt.TextCompletion(cm.Content, cm.From)
+			reply, err := g.Gpt.TextCompletion(cm.Content, cm.From)
 			if err != nil {
 				reply = "机器人出错啦"
 				logger.ErrE("robot error", err)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/glide-im/chat-gpt-bot/chat_gpt"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/robotic"
@@ -34,7 +33,7 @@ func (g *GptBot) handleStream(cm *messages.ChatMessage) {
 			Seq:     int64(seq),
 		}
 
-		ch, err := chat_gpt.TextCompletionSteam(cm.Content, cm.From)
+		ch, err := g.Gpt.TextCompletionSteam(cm.Content, cm.From)
 		if err != nil || ch == nil {
 			m.Type = 11
 			m.Content = "机器人出错啦"

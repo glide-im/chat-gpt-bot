@@ -1,4 +1,4 @@
-package chat_gpt
+package openai
 
 import "time"
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/glide-im/chat-gpt-bot/chat_gpt"
+	"github.com/glide-im/chat-gpt-bot/openai"
 	"github.com/spf13/viper"
 )
 
@@ -46,13 +46,10 @@ func init() {
 var config *Config
 
 func main() {
-	chat_gpt.ApiToken(config.Common.OpenAiApiKey)
-	if config.Common.Proxy != "" {
-		chat_gpt.SetProxy(config.Common.Proxy)
-	}
-	//go New(config.Bot2).Run()
-	go New(config.Bot1).Run()
+	gpt := openai.New(config.Common.OpenAiApiKey, config.Common.Proxy)
 
-	// 保持进程
+	//go New(config.Bot2, gpt).Run()
+	go New(config.Bot1, gpt).Run()
+
 	select {}
 }
