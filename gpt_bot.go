@@ -24,8 +24,7 @@ type GptBot struct {
 func New(c *BotConfig, gpt *openai.ChatGPT) *GptBot {
 
 	var botX *robotic.BotX
-
-	botX = robotic.NewBotX(config.Common.BotServer, c.BotToken)
+	botX = robotic.NewBotX(config.Common.BotServer)
 
 	return &GptBot{
 		Gpt:      gpt,
@@ -52,7 +51,7 @@ func (g *GptBot) Run() {
 	g.BotX.HandleChatMessage(g.MessageHandler)
 
 	// 启动
-	err := g.BotX.Start(func(m *messages.GlideMessage) {
+	err := g.BotX.RunAndLogin(g.Config.Email, g.Config.Password, func(m *messages.GlideMessage) {
 		// 处理所有消息
 	})
 	panic(err)

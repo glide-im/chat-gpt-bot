@@ -23,24 +23,24 @@ type commands struct {
 }
 
 func (c *commands) initCommand() {
-	command, _ := robotic.NewCommand("", "login", c.handleCommandLogin)
+	command, _ := robotic.NewCommand(RoleNone, "login", c.handleCommandLogin)
 
 	_ = c.bot.AddCommand(command)
 }
 
-func (c *commands) handleCommandLogin(message *messages.ChatMessage, value string) error {
+func (c *commands) handleCommandLogin(message *robotic.ResolvedChatMessage, value string) error {
 
 	if value == config.Common.AdminPassword {
-		roles[message.From] = RoleAdmin
-		_ = c.bot.Send(message.From, robotic.ActionChatMessage, c.createReply(message.From, "管理员登录成功"))
+		roles[message.ChatMessage.From] = RoleAdmin
+		_ = c.bot.Send(message.ChatMessage.From, robotic.ActionChatMessage, c.createReply(message.ChatMessage.From, "管理员登录成功"))
 		return nil
 	}
 	if value == config.Common.VipPassword {
-		roles[message.From] = RoleVip
-		_ = c.bot.Send(message.From, robotic.ActionChatMessage, c.createReply(message.From, "VIP 登录成功"))
+		roles[message.ChatMessage.From] = RoleVip
+		_ = c.bot.Send(message.ChatMessage.From, robotic.ActionChatMessage, c.createReply(message.ChatMessage.From, "VIP 登录成功"))
 		return nil
 	}
-	_ = c.bot.Send(message.From, robotic.ActionChatMessage, c.createReply(message.From, "登录失败"))
+	_ = c.bot.Send(message.ChatMessage.From, robotic.ActionChatMessage, c.createReply(message.ChatMessage.From, "登录失败"))
 	return nil
 }
 

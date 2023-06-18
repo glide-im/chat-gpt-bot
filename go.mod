@@ -3,8 +3,8 @@ module github.com/glide-im/chat-gpt-bot
 go 1.18
 
 require (
-	github.com/glide-im/glide v1.4.7
-	github.com/glide-im/robotic v1.1.0
+	github.com/glide-im/glide v1.6.0
+	github.com/glide-im/robotic v1.2.2
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/sashabaranov/go-openai v1.5.7
@@ -29,10 +29,10 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -1,25 +1,28 @@
-[Bot2]
-Type = 2
-Greetings = """
-您好，我是基于 OpenAI DELL-E 的图片生成机器人, 我可以根据你的描述生成图片, 例如: `一个穿连帽衫的男人在滑滑板, 亮色调, 自然光, 高细节`\n\n
-- 生成的图片固定为 512x512 的分辨率\n\n
-- **请不要试图生成包含非法的内容的图片** \n\n
-"""
-BotToken = ""
+#[Bot2]
+#Type = 2
+#Greetings = """
+#您好，我是基于 OpenAI DELL-E 的图片生成机器人, 我可以根据你的描述生成图片, 例如: `一个穿连帽衫的男人在滑滑板, 亮色调, 自然光, 高细节`\n\n
+#- 生成的图片固定为 512x512 的分辨率\n\n
+#- **请不要试图生成包含非法的内容的图片** \n\n
+#"""
+#BotToken = ""
 
-[Bot1]
+[Bot]
 Type = 1
 Greetings = """
-您好，我是 ChatGPT Bot，是一个由 OpenAI GPT-3.5 开发的智能对话机器人。我可以回答各种问题，例如科学、技术、历史、文化等方面的问题, 也可以模拟面试, 文字互动游戏等.\n\n
+您好，我是 ChatGPT Bot，是一个由 OpenAI GPT-3.5 开发的智能对话机器人。\n\n
 - 只会记忆双方历史对话的最后 4000 字\n\n
 - 回答被限制在 2000 字以内 \n\n
-- 工作时间是工作日 9:00- 18:00\n\n
 """
-BotToken = "..-"
+Email = ""
+Password = ""
 
 [Common]
-OpenAiApiKey = "sk-"
-Proxy = "http://127.0.0.1:7890"
+OpenAiApiKey = ""
+Proxy = "" #"http://127.0.0.1:7890"
+#BotServer = "ws://localhost:8083/ws"
 BotServer = "ws://intercom.ink/ws"
+#ApiBaseUrl = "http://localhost:8081"
+ApiBaseUrl = "https://intercom.ink"
 AdminPassword = ""
 VipPassword = ""

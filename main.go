@@ -2,12 +2,14 @@ package main
 
 import (
 	"github.com/glide-im/chat-gpt-bot/openai"
+	"github.com/glide-im/robotic"
 	"github.com/spf13/viper"
 )
 
 type BotConfig struct {
 	Greetings string
-	BotToken  string
+	Email     string
+	Password  string
 	Type      int32
 }
 
@@ -15,13 +17,13 @@ type Common struct {
 	OpenAiApiKey  string
 	Proxy         string
 	BotServer     string
+	ApiBaseUrl    string
 	AdminPassword string
 	VipPassword   string
 }
 
 type Config struct {
-	Bot1   *BotConfig
-	Bot2   *BotConfig
+	Bot    *BotConfig
 	Common *Common
 }
 
@@ -48,8 +50,8 @@ var config *Config
 func main() {
 	gpt := openai.New(config.Common.OpenAiApiKey, config.Common.Proxy)
 
-	//go New(config.Bot2, gpt).Run()
-	go New(config.Bot1, gpt).Run()
+	robotic.ApiBaseUrl = config.Common.ApiBaseUrl
+	go New(config.Bot, gpt).Run()
 
 	select {}
 }
